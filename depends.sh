@@ -102,7 +102,7 @@ unavailable_packages=()
 missing_packages=()
 
 for package in "${PACKAGES[@]}"; do
-    if apt-cache show "$package" >/dev/null 2>&1; then
+    if apt-cache show "$package" 2>/dev/null | grep -q '^Package:'; then
         available_packages+=("$package")
         if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
             missing_packages+=("$package")
