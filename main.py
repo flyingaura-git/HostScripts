@@ -125,7 +125,10 @@ def parse_metadata(markdown_text: str) -> tuple[dict, str]:
     return metadata, parts[2].strip()
 
 
-def fetch_optional_markdown(path: str) -> tuple[dict, str]:
+def fetch_optional_markdown(path: str, available_paths: set[str] | None = None) -> tuple[dict, str]:
+    # Avoid unnecessary HTTP 404 requests for optional metadata files.
+    if available_paths is not None and path not in available_paths:
+        return {}, ""
     url = f"{RAW_BASE}/{COMMIT_SHA}/{path}"
     try:
         return parse_metadata(request_text(url))
@@ -133,14 +136,16 @@ def fetch_optional_markdown(path: str) -> tuple[dict, str]:
         return {}, ""
 
 
-def fetch_script_metadata(path: str) -> dict:
+def fetch_script_metadata(path: str, available_paths: set[str] | None = None) -> dict:
     candidates = [f"{path}.md"]
     stem = str(PurePosixPath(path).with_suffix(""))
     if f"{stem}.md" not in candidates:
         candidates.append(f"{stem}.md")
 
     for candidate in candidates:
-        metadata, body = fetch_optional_markdown(candidate)
+        if available_paths is not None and candidate not in available_paths:
+            continue
+        metadata, body = fetch_optional_markdown(candidate, available_paths)
         if metadata or body:
             metadata["_body"] = body
             return metadata
@@ -151,6 +156,7 @@ def build_tree(entries: list[dict]) -> list[Category]:
     """Build an unlimited-depth category tree from the Git tree response."""
     directories: dict[str, Category] = {}
     files_by_parent: dict[str, list[dict]] = {}
+    available_paths = {entry.get("path", "") for entry in entries}
 
     for entry in entries:
         path = entry.get("path", "")
@@ -170,7 +176,9 @@ def build_tree(entries: list[dict]) -> list[Category]:
 
     # Load category metadata.
     for relative, category in directories.items():
-        category.metadata, body = fetch_optional_markdown(f"{category.path}/category.md")
+        category.metadata, body = fetch_optional_markdown(
+            f"{category.path}/category.md", available_paths
+        )
         category.metadata["_body"] = body
         if not category.metadata.get("name") and body:
             heading = re.search(r"^#\\s+(.+)$", body, re.MULTILINE)
@@ -204,7 +212,7 @@ def build_tree(entries: list[dict]) -> list[Category]:
                 Script(
                     name=PurePosixPath(filename).stem.replace("-", " ").replace("_", " ").title(),
                     path=entry["path"],
-                    metadata=fetch_script_metadata(entry["path"]),
+                    metadata=fetch_script_metadata(entry["path"], available_paths),
                 )
             )
 
@@ -579,13 +587,17 @@ def main():
     console.clear()
     show_header()
     try:
-        console.print("[cyan]Connecting to HostScripts repository...[/cyan]")
+        console.print("[cyan]Connecting to GitHub...[/cyan]", highlight=False)
         branch_data = request_json(f"{API_BASE}/branches/{BRANCH}")
         COMMIT_SHA = branch_data["commit"]["sha"]
+        console.print(f"[dim]Repository connected. Latest commit: {COMMIT_SHA[:8]}[/dim]")
+        console.print("[cyan]Loading script and category index...[/cyan]", highlight=False)
         tree_data = request_json(f"{API_BASE}/git/trees/{COMMIT_SHA}?recursive=1")
         if tree_data.get("truncated"):
             raise RuntimeError("GitHub returned a truncated repository tree.")
+        console.print("[cyan]Reading category metadata...[/cyan]", highlight=False)
         categories = build_tree(tree_data.get("tree", []))
+        console.print("[green]Repository loaded successfully.[/green]")
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, KeyError, ValueError, RuntimeError) as error:
         console.print(f"\n[bold red]Could not load HostScripts: {error}[/bold red]")
         raise SystemExit(1)
