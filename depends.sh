@@ -16,27 +16,35 @@ readonly PACKAGES=(
     ca-certificates
     coreutils
     curl
+    dialog
     dnsutils
+    figlet
     findutils
+    fzf
     gawk
     git
     grep
+    gum
     gzip
     iproute2
     iputils-ping
     jq
     less
+    lolcat
     lsof
     net-tools
     openssl
     procps
     psmisc
+    pv
+    python3-rich
     rsync
     sed
     tar
     unzip
     util-linux
     wget
+    whiptail
     xz-utils
 )
 
@@ -65,10 +73,9 @@ case "${1:-}" in
 esac
 
 [[ $# -le 1 ]] || die "Only one option may be provided."
-
 [[ $EUID -eq 0 ]] || die "Run this script as root: sudo bash ${SCRIPT_NAME}"
-
 [[ -r /etc/os-release ]] || die "Cannot identify the operating system (/etc/os-release missing)."
+
 # shellcheck disable=SC1091
 source /etc/os-release
 
@@ -82,19 +89,40 @@ esac
 
 command -v apt-get >/dev/null 2>&1 || die "apt-get was not found."
 
+log "Detected: ${PRETTY_NAME:-$OS_ID}"
+
+if [[ "$CHECK_ONLY" == false ]]; then
+    export DEBIAN_FRONTEND=noninteractive
+    log "Updating APT package indexes..."
+    apt-get update
+fi
+
+available_packages=()
+unavailable_packages=()
 missing_packages=()
+
 for package in "${PACKAGES[@]}"; do
-    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
-        missing_packages+=("$package")
+    if apt-cache show "$package" >/dev/null 2>&1; then
+        available_packages+=("$package")
+        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
+            missing_packages+=("$package")
+        fi
+    else
+        unavailable_packages+=("$package")
     fi
 done
 
-log "Detected: ${PRETTY_NAME:-$OS_ID}"
 log "Dependencies defined: ${#PACKAGES[@]}"
+log "Available in configured APT repositories: ${#available_packages[@]}"
 log "Dependencies missing: ${#missing_packages[@]}"
 
+if (("${#unavailable_packages[@]}" > 0)); then
+    warn "Not available in the configured APT repositories:"
+    printf '  - %s\n' "${unavailable_packages[@]}" >&2
+fi
+
 if (("${#missing_packages[@]}" == 0)); then
-    log "All HostScripts dependencies are already installed."
+    log "All available HostScripts dependencies are already installed."
     exit 0
 fi
 
@@ -104,11 +132,6 @@ if [[ "$CHECK_ONLY" == true ]]; then
     warn "Dependency check failed. Run 'sudo bash ${SCRIPT_NAME}' to install missing packages."
     exit 1
 fi
-
-export DEBIAN_FRONTEND=noninteractive
-
-log "Updating APT package indexes..."
-apt-get update
 
 log "Installing missing dependencies..."
 apt-get install -y --no-install-recommends "${missing_packages[@]}"
@@ -126,4 +149,4 @@ if (("${#failed[@]}" > 0)); then
     die "Some dependencies could not be verified."
 fi
 
-log "All HostScripts dependencies are installed successfully."
+log "All available HostScripts dependencies are installed successfully."
