@@ -478,15 +478,20 @@ def draw_home(stdscr, categories, total_scripts):
             continue
 
         center = width // 2
-        title = "H O S T S C R I P T S"
+        # Compact ASCII wordmark keeps the home screen recognizable in any terminal.
+        logo_lines = (" _   _  ___  ____ _____ ____   ____ ____  ___ ____  _____ ____ ",
+                      "| | | |/ _ \\/ ___|_   _/ ___| / ___|  _ \\/ _ \\/ ___|| ____|",
+                      "| |_| | | | \\___ \\ | |\\___ \\| |   | |_) | | | \\___ \\|  _|",
+                      "|  _  | |_| |___) || |  ___) | |___|  _ <| |_| |___) | |___",
+                      "|_| |_|\\___/|____/ |_| |____/ \\____|_| \\_\\___/|____/|_____|")
+        for offset, line in enumerate(logo_lines):
+            x = max(1, center - len(line) // 2)
+            stdscr.addstr(1 + offset, x, line[:width - x - 1],
+                          curses.color_pair(1 if offset in (0, 4) else 3) | curses.A_BOLD)
         subtitle = "HOSTING AUTOMATION  /  SCRIPTS  /  TOOLS"
-        title_x = max(1, center - len(title) // 2)
-        stdscr.addstr(2, title_x, title, curses.color_pair(3) | curses.A_BOLD)
-        ornament = "─" * 8 + " ◆ " + "─" * 8
-        stdscr.addstr(3, max(1, center - len(ornament) // 2), ornament, curses.color_pair(1))
-        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(5))
+        stdscr.addstr(6, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(5))
         stats = f"{len(categories)} categories    •    {total_scripts} scripts available"
-        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(8))
+        stdscr.addstr(7, max(1, center - len(stats) // 2), stats, curses.color_pair(8))
 
         # Large, centered search field.
         box_width = min(72, width - 8)
@@ -509,11 +514,11 @@ def draw_home(stdscr, categories, total_scripts):
         stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(5) | curses.A_DIM)
 
         # Action buttons sit directly below the search area.
-        menu_top = top + 5
+        menu_top = top + 4
         menu_width = min(66, width - 10)
         menu_left = center - menu_width // 2
         for index, (label, description, _) in enumerate(actions):
-            y = menu_top + index * 3
+            y = menu_top + index * 2
             active = not search_focused and index == selected
             palette = [curses.color_pair(1) | curses.A_BOLD,
                        curses.color_pair(5), curses.color_pair(5), curses.color_pair(5)]
