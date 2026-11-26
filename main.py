@@ -441,16 +441,17 @@ def draw_home(stdscr, categories, total_scripts):
     try:
         curses.start_color()
         curses.use_default_colors()
+        # Restrained slate + soft teal palette; avoid saturated full-screen colors.
         curses.init_pair(1, curses.COLOR_CYAN, -1)
-        curses.init_pair(2, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(2, curses.COLOR_BLUE, -1)
         curses.init_pair(3, curses.COLOR_WHITE, -1)
         curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_CYAN)
-        curses.init_pair(5, curses.COLOR_YELLOW, -1)
+        curses.init_pair(5, curses.COLOR_WHITE, -1)
         curses.init_pair(6, curses.COLOR_GREEN, -1)
-        curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_BLUE)
-        curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
+        curses.init_pair(7, curses.COLOR_WHITE, curses.COLOR_BLUE)
+        curses.init_pair(8, curses.COLOR_CYAN, -1)
         curses.init_pair(9, curses.COLOR_YELLOW, -1)
-        curses.init_pair(10, curses.COLOR_BLUE, -1)
+        curses.init_pair(10, curses.COLOR_CYAN, -1)
     except curses.error:
         pass
 
@@ -480,21 +481,22 @@ def draw_home(stdscr, categories, total_scripts):
         title = "H O S T S C R I P T S"
         subtitle = "HOSTING AUTOMATION  /  SCRIPTS  /  TOOLS"
         title_x = max(1, center - len(title) // 2)
-        stdscr.addstr(2, title_x, title, curses.color_pair(2) | curses.A_BOLD)
-        stdscr.addstr(3, max(1, center - 23), "✦" + "━" * 8 + "◆" + "━" * 8 + "✦", curses.color_pair(5) | curses.A_BOLD)
-        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(1) | curses.A_BOLD)
-        stats = f"✦  {len(categories)} CATEGORIES     •     {total_scripts} SCRIPTS AVAILABLE  ✦"
-        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(6) | curses.A_BOLD)
+        stdscr.addstr(2, title_x, title, curses.color_pair(3) | curses.A_BOLD)
+        ornament = "─" * 8 + " ◆ " + "─" * 8
+        stdscr.addstr(3, max(1, center - len(ornament) // 2), ornament, curses.color_pair(1))
+        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(5))
+        stats = f"{len(categories)} categories    •    {total_scripts} scripts available"
+        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(8))
 
         # Large, centered search field.
         box_width = min(72, width - 8)
         box_left = center - box_width // 2
-        search_label = "⌕  SEARCH THE SCRIPT LIBRARY  ⌕"
+        search_label = "SEARCH THE SCRIPT LIBRARY"
         stdscr.addstr(9, max(1, center - len(search_label) // 2), search_label,
-                      curses.color_pair(5) | curses.A_BOLD)
+                      curses.color_pair(1) | curses.A_BOLD)
         top = 10
-        border_attr = curses.color_pair(2) | curses.A_BOLD if search_focused else curses.color_pair(1)
-        field_attr = curses.color_pair(7) | curses.A_BOLD if search_focused else curses.color_pair(3)
+        border_attr = curses.color_pair(1) | curses.A_BOLD if search_focused else curses.color_pair(2)
+        field_attr = curses.color_pair(3) | curses.A_BOLD if search_focused else curses.color_pair(5)
         stdscr.addstr(top, box_left, "╭" + "━" * (box_width - 2) + "╮", border_attr)
         stdscr.addstr(top + 1, box_left, "┃", border_attr)
         field = "  " + (query if query else "Type to search scripts...")
@@ -503,8 +505,8 @@ def draw_home(stdscr, categories, total_scripts):
         stdscr.addstr(top + 1, box_left + box_width - 1, "┃", border_attr)
         stdscr.addstr(top + 2, box_left, "╰" + "━" * (box_width - 2) + "╯", border_attr)
 
-        hint = "↵  ENTER TO SEARCH     ↓  EXPLORE MENU"
-        stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(10) | curses.A_BOLD)
+        hint = "ENTER TO SEARCH     •     DOWN ARROW TO EXPLORE"
+        stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(5) | curses.A_DIM)
 
         # Action buttons sit directly below the search area.
         menu_top = top + 5
@@ -513,18 +515,18 @@ def draw_home(stdscr, categories, total_scripts):
         for index, (label, description, _) in enumerate(actions):
             y = menu_top + index * 3
             active = not search_focused and index == selected
-            palette = [curses.color_pair(8), curses.color_pair(1) | curses.A_BOLD,
-                       curses.color_pair(5) | curses.A_BOLD, curses.color_pair(6) | curses.A_BOLD]
-            attr = (curses.color_pair(8) | curses.A_BOLD) if active else palette[index]
-            button = f"  ◆  {label}  ◆  " if active else f"  {label}  "
+            palette = [curses.color_pair(1) | curses.A_BOLD,
+                       curses.color_pair(5), curses.color_pair(5), curses.color_pair(5)]
+            attr = (curses.color_pair(4) | curses.A_BOLD) if active else palette[index]
+            button = f"  {label}  "
             button_x = center - len(button) // 2
             stdscr.addstr(y, button_x, button, attr)
             desc_x = center - len(description) // 2
             stdscr.addstr(y + 1, max(1, desc_x), description[:width - 2], curses.color_pair(3) | curses.A_DIM)
 
-        footer = "↑ / ↓ NAVIGATE    ENTER SELECT    TYPE TO SEARCH    ESC BACK"
+        footer = "↑ / ↓ Navigate    Enter Select    Type to search    Esc Back"
         stdscr.addstr(height - 2, max(1, center - len(footer) // 2), footer[:width - 2],
-                      curses.color_pair(2) | curses.A_BOLD)
+                      curses.color_pair(5) | curses.A_DIM)
         stdscr.refresh()
 
         key = stdscr.getch()
