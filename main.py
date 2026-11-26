@@ -349,17 +349,6 @@ def run_script(script: Script):
             console.print("[red]This script type is not supported for execution.[/red]")
             return
 
-        console.print(
-            Panel(
-                f"[yellow]{' '.join(command)}[/yellow]\n"
-                "[dim]The script will run with your current user's permissions.[/dim]",
-                title="CONFIRM EXECUTION",
-                border_style="yellow",
-            )
-        )
-        if not Confirm.ask("Proceed?", default=False):
-            return
-
         result = subprocess.run(command, check=False)
         if result.returncode == 0:
             console.print("\n[bold green]Script completed successfully.[/bold green]")
