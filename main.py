@@ -468,8 +468,8 @@ def draw_home(stdscr, categories, total_scripts):
     while True:
         stdscr.erase()
         height, width = stdscr.getmaxyx()
-        if height < 18 or width < 62:
-            message = "Please enlarge your terminal (minimum 62 columns x 18 rows)."
+        if height < 24 or width < 62:
+            message = "Please enlarge your terminal (minimum 62 columns x 24 rows)."
             stdscr.addstr(max(0, height // 2), max(0, (width - len(message)) // 2), message[:max(0, width - 1)])
             stdscr.refresh()
             key = stdscr.getch()
