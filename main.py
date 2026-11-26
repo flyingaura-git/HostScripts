@@ -447,6 +447,10 @@ def draw_home(stdscr, categories, total_scripts):
         curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_CYAN)
         curses.init_pair(5, curses.COLOR_YELLOW, -1)
         curses.init_pair(6, curses.COLOR_GREEN, -1)
+        curses.init_pair(7, curses.COLOR_BLACK, curses.COLOR_BLUE)
+        curses.init_pair(8, curses.COLOR_WHITE, curses.COLOR_MAGENTA)
+        curses.init_pair(9, curses.COLOR_YELLOW, -1)
+        curses.init_pair(10, curses.COLOR_BLUE, -1)
     except curses.error:
         pass
 
@@ -475,29 +479,32 @@ def draw_home(stdscr, categories, total_scripts):
         center = width // 2
         title = "H O S T S C R I P T S"
         subtitle = "HOSTING AUTOMATION  /  SCRIPTS  /  TOOLS"
-        stdscr.addstr(2, max(1, center - len(title) // 2), title, curses.color_pair(2) | curses.A_BOLD)
-        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(1))
-        stats = f"{len(categories)} main categories    •    {total_scripts} scripts available"
-        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(3) | curses.A_DIM)
+        title_x = max(1, center - len(title) // 2)
+        stdscr.addstr(2, title_x, title, curses.color_pair(2) | curses.A_BOLD)
+        stdscr.addstr(3, max(1, center - 23), "✦" + "━" * 8 + "◆" + "━" * 8 + "✦", curses.color_pair(5) | curses.A_BOLD)
+        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(1) | curses.A_BOLD)
+        stats = f"✦  {len(categories)} CATEGORIES     •     {total_scripts} SCRIPTS AVAILABLE  ✦"
+        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(6) | curses.A_BOLD)
 
         # Large, centered search field.
         box_width = min(72, width - 8)
         box_left = center - box_width // 2
-        search_label = "SEARCH SCRIPTS"
+        search_label = "⌕  SEARCH THE SCRIPT LIBRARY  ⌕"
         stdscr.addstr(9, max(1, center - len(search_label) // 2), search_label,
-                      curses.color_pair(1) | curses.A_BOLD)
+                      curses.color_pair(5) | curses.A_BOLD)
         top = 10
-        field_attr = curses.color_pair(4) | curses.A_BOLD if search_focused else curses.color_pair(3)
-        stdscr.addstr(top, box_left, "┌" + "─" * (box_width - 2) + "┐", curses.color_pair(1))
-        stdscr.addstr(top + 1, box_left, "│", curses.color_pair(1))
-        field = "  " + (query if query else "Type to search scripts...") 
+        border_attr = curses.color_pair(2) | curses.A_BOLD if search_focused else curses.color_pair(1)
+        field_attr = curses.color_pair(7) | curses.A_BOLD if search_focused else curses.color_pair(3)
+        stdscr.addstr(top, box_left, "╭" + "━" * (box_width - 2) + "╮", border_attr)
+        stdscr.addstr(top + 1, box_left, "┃", border_attr)
+        field = "  " + (query if query else "Type to search scripts...")
         visible = field[:box_width - 3].ljust(box_width - 3)
         stdscr.addstr(top + 1, box_left + 1, visible, field_attr)
-        stdscr.addstr(top + 1, box_left + box_width - 1, "│", curses.color_pair(1))
-        stdscr.addstr(top + 2, box_left, "└" + "─" * (box_width - 2) + "┘", curses.color_pair(1))
+        stdscr.addstr(top + 1, box_left + box_width - 1, "┃", border_attr)
+        stdscr.addstr(top + 2, box_left, "╰" + "━" * (box_width - 2) + "╯", border_attr)
 
-        hint = "ENTER  Search     ↓  Browse actions"
-        stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(3) | curses.A_DIM)
+        hint = "↵  ENTER TO SEARCH     ↓  EXPLORE MENU"
+        stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(10) | curses.A_BOLD)
 
         # Action buttons sit directly below the search area.
         menu_top = top + 5
@@ -506,21 +513,23 @@ def draw_home(stdscr, categories, total_scripts):
         for index, (label, description, _) in enumerate(actions):
             y = menu_top + index * 3
             active = not search_focused and index == selected
-            attr = (curses.color_pair(4) | curses.A_BOLD) if active else curses.color_pair(3)
-            button = f"  {label}  "
+            palette = [curses.color_pair(8), curses.color_pair(1) | curses.A_BOLD,
+                       curses.color_pair(5) | curses.A_BOLD, curses.color_pair(6) | curses.A_BOLD]
+            attr = (curses.color_pair(8) | curses.A_BOLD) if active else palette[index]
+            button = f"  ◆  {label}  ◆  " if active else f"  {label}  "
             button_x = center - len(button) // 2
             stdscr.addstr(y, button_x, button, attr)
             desc_x = center - len(description) // 2
             stdscr.addstr(y + 1, max(1, desc_x), description[:width - 2], curses.color_pair(3) | curses.A_DIM)
 
-        footer = "↑ / ↓ Navigate    ENTER Select    Type to search    ESC Clear / Back"
+        footer = "↑ / ↓ NAVIGATE    ENTER SELECT    TYPE TO SEARCH    ESC BACK"
         stdscr.addstr(height - 2, max(1, center - len(footer) // 2), footer[:width - 2],
-                      curses.color_pair(2) | curses.A_DIM)
+                      curses.color_pair(2) | curses.A_BOLD)
         stdscr.refresh()
 
         key = stdscr.getch()
         if search_focused:
-            if key in (curses.KEY_DOWN, curses.KEY_TAB):
+            if key in (curses.KEY_DOWN, 9):  # 9 is the portable Tab key code
                 search_focused = False
                 selected = 0
             elif key in (curses.KEY_UP,):
