@@ -442,7 +442,7 @@ def show_top_picks(categories: list[Category]):
         show_category(selected)
 
 
-def draw_home(stdscr, categories, total_scripts):
+def draw_home(stdscr, categories, total_scripts, all_scripts):
     """Render the centered home screen and return the selected action/query."""
     curses.curs_set(0)
     stdscr.keypad(True)
@@ -472,6 +472,15 @@ def draw_home(stdscr, categories, total_scripts):
     selected = 0
     query = ""
     search_focused = True
+
+    def live_matches():
+        term = query.strip().lower()
+        if not term:
+            return []
+        return [script for script in all_scripts
+                if term in script.name.lower()
+                or term in script.path.lower()
+                or term in script.description.lower()]
 
     while True:
         stdscr.erase()
@@ -521,21 +530,46 @@ def draw_home(stdscr, categories, total_scripts):
         hint = "ENTER TO SEARCH     •     DOWN ARROW TO EXPLORE"
         stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(5) | curses.A_DIM)
 
-        # Action buttons sit directly below the search area.
+        # Show matching scripts immediately as the query changes.
+        matches = live_matches()
         menu_top = top + 4
-        menu_width = min(66, width - 10)
-        menu_left = center - menu_width // 2
-        for index, (label, description, _) in enumerate(actions):
-            y = menu_top + index * 2
-            active = not search_focused and index == selected
-            palette = [curses.color_pair(1) | curses.A_BOLD,
-                       curses.color_pair(5), curses.color_pair(5), curses.color_pair(5)]
-            attr = (curses.color_pair(4) | curses.A_BOLD) if active else palette[index]
-            button = f"  {label}  "
-            button_x = center - len(button) // 2
-            stdscr.addstr(y, button_x, button, attr)
-            desc_x = center - len(description) // 2
-            stdscr.addstr(y + 1, max(1, desc_x), description[:width - 2], curses.color_pair(3) | curses.A_DIM)
+        if query.strip():
+            result_heading = f"LIVE RESULTS  /  {len(matches)} MATCHES"
+            stdscr.addstr(menu_top, max(1, center - len(result_heading) // 2),
+                          result_heading[:width - 2], curses.color_pair(1) | curses.A_BOLD)
+            if matches:
+                visible_matches = matches[:5]
+                selected = min(selected, len(visible_matches) - 1)
+                for index, script in enumerate(visible_matches):
+                    y = menu_top + 1 + index * 2
+                    active = search_focused and index == selected
+                    attr = (curses.color_pair(4) | curses.A_BOLD) if active else curses.color_pair(6)
+                    label = f"{script.symbol}  {script.name}"
+                    detail = script.path
+                    stdscr.addstr(y, max(1, center - min(len(label), width - 4) // 2),
+                                  label[:width - 3], attr)
+                    stdscr.addstr(y + 1, max(1, center - min(len(detail), width - 4) // 2),
+                                  detail[:width - 3], curses.color_pair(3) | curses.A_DIM)
+                if len(matches) > 5:
+                    more = f"+ {len(matches) - 5} more — refine your search"
+                    stdscr.addstr(menu_top + 11, max(1, center - len(more) // 2),
+                                  more[:width - 2], curses.color_pair(5) | curses.A_DIM)
+            else:
+                no_match = "No matching scripts yet."
+                stdscr.addstr(menu_top + 2, max(1, center - len(no_match) // 2),
+                              no_match, curses.color_pair(9))
+        else:
+            for index, (label, description, _) in enumerate(actions):
+                y = menu_top + index * 2
+                active = not search_focused and index == selected
+                palette = [curses.color_pair(1) | curses.A_BOLD,
+                           curses.color_pair(5), curses.color_pair(5), curses.color_pair(5)]
+                attr = (curses.color_pair(4) | curses.A_BOLD) if active else palette[index]
+                button = f"  {label}  "
+                button_x = center - len(button) // 2
+                stdscr.addstr(y, button_x, button, attr)
+                desc_x = center - len(description) // 2
+                stdscr.addstr(y + 1, max(1, desc_x), description[:width - 2], curses.color_pair(3) | curses.A_DIM)
 
         footer = "↑ / ↓ Navigate    Enter Select    Type to search    Esc Back"
         stdscr.addstr(height - 2, max(1, center - len(footer) // 2), footer[:width - 2],
@@ -544,12 +578,19 @@ def draw_home(stdscr, categories, total_scripts):
 
         key = stdscr.getch()
         if search_focused:
+            matches = live_matches()
             if key in (curses.KEY_DOWN, 9):  # 9 is the portable Tab key code
-                search_focused = False
-                selected = 0
+                if query.strip() and matches:
+                    selected = min(selected + 1, min(len(matches), 5) - 1)
+                else:
+                    search_focused = False
+                    selected = 0
             elif key in (curses.KEY_UP,):
-                pass
+                if query.strip() and matches and selected > 0:
+                    selected -= 1
             elif key in (curses.KEY_ENTER, 10, 13):
+                if query.strip() and matches:
+                    return "open_script", matches[selected]
                 if query.strip():
                     return "search", query.strip()
                 search_focused = False
@@ -561,8 +602,10 @@ def draw_home(stdscr, categories, total_scripts):
                     return "exit", ""
             elif key in (curses.KEY_BACKSPACE, 127, 8):
                 query = query[:-1]
+                selected = 0
             elif 32 <= key <= 126 and len(query) < 120:
                 query += chr(key)
+                selected = 0
         else:
             if key in (curses.KEY_UP,):
                 if selected == 0:
@@ -606,7 +649,7 @@ def main():
 
     while True:
         try:
-            action, value = curses.wrapper(draw_home, categories, total_scripts)
+            action, value = curses.wrapper(draw_home, categories, total_scripts, flatten_scripts(categories))
         except curses.error:
             console.print("[red]Could not start the interactive interface. Run this program in a normal terminal.[/red]")
             return
@@ -614,7 +657,9 @@ def main():
         if action == "exit":
             console.print("[cyan]Thanks for using HostScripts.[/cyan]")
             return
-        if action == "top":
+        if action == "open_script":
+            show_script(value)
+        elif action == "top":
             show_top_picks(categories)
         elif action == "browse":
             selected = choose_from_list(
