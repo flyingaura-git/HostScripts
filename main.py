@@ -8,6 +8,7 @@ Run:
 
 from __future__ import annotations
 
+import curses
 import json
 import os
 import re
@@ -433,6 +434,129 @@ def show_top_picks(categories: list[Category]):
         show_category(selected)
 
 
+def draw_home(stdscr, categories, total_scripts):
+    """Render the centered home screen and return the selected action/query."""
+    curses.curs_set(0)
+    stdscr.keypad(True)
+    try:
+        curses.start_color()
+        curses.use_default_colors()
+        curses.init_pair(1, curses.COLOR_CYAN, -1)
+        curses.init_pair(2, curses.COLOR_MAGENTA, -1)
+        curses.init_pair(3, curses.COLOR_WHITE, -1)
+        curses.init_pair(4, curses.COLOR_BLACK, curses.COLOR_CYAN)
+        curses.init_pair(5, curses.COLOR_YELLOW, -1)
+        curses.init_pair(6, curses.COLOR_GREEN, -1)
+    except curses.error:
+        pass
+
+    actions = [
+        ("TOP PICKS", "Featured categories and popular starting points", "top"),
+        ("BROWSE ALL CATEGORIES", "Explore every script category", "browse"),
+        ("REFRESH REPOSITORY", "Fetch the latest scripts from GitHub", "refresh"),
+        ("EXIT", "Close HostScripts", "exit"),
+    ]
+    selected = 0
+    query = ""
+    search_focused = True
+
+    while True:
+        stdscr.erase()
+        height, width = stdscr.getmaxyx()
+        if height < 18 or width < 62:
+            message = "Please enlarge your terminal (minimum 62 columns x 18 rows)."
+            stdscr.addstr(max(0, height // 2), max(0, (width - len(message)) // 2), message[:max(0, width - 1)])
+            stdscr.refresh()
+            key = stdscr.getch()
+            if key in (ord("q"), 27):
+                return "exit", ""
+            continue
+
+        center = width // 2
+        title = "H O S T S C R I P T S"
+        subtitle = "HOSTING AUTOMATION  /  SCRIPTS  /  TOOLS"
+        stdscr.addstr(2, max(1, center - len(title) // 2), title, curses.color_pair(2) | curses.A_BOLD)
+        stdscr.addstr(4, max(1, center - len(subtitle) // 2), subtitle, curses.color_pair(1))
+        stats = f"{len(categories)} main categories    •    {total_scripts} scripts available"
+        stdscr.addstr(6, max(1, center - len(stats) // 2), stats, curses.color_pair(3) | curses.A_DIM)
+
+        # Large, centered search field.
+        box_width = min(72, width - 8)
+        box_left = center - box_width // 2
+        search_label = "SEARCH SCRIPTS"
+        stdscr.addstr(9, max(1, center - len(search_label) // 2), search_label,
+                      curses.color_pair(1) | curses.A_BOLD)
+        top = 10
+        field_attr = curses.color_pair(4) | curses.A_BOLD if search_focused else curses.color_pair(3)
+        stdscr.addstr(top, box_left, "┌" + "─" * (box_width - 2) + "┐", curses.color_pair(1))
+        stdscr.addstr(top + 1, box_left, "│", curses.color_pair(1))
+        field = "  " + (query if query else "Type to search scripts...") 
+        visible = field[:box_width - 3].ljust(box_width - 3)
+        stdscr.addstr(top + 1, box_left + 1, visible, field_attr)
+        stdscr.addstr(top + 1, box_left + box_width - 1, "│", curses.color_pair(1))
+        stdscr.addstr(top + 2, box_left, "└" + "─" * (box_width - 2) + "┘", curses.color_pair(1))
+
+        hint = "ENTER  Search     ↓  Browse actions"
+        stdscr.addstr(top + 3, max(1, center - len(hint) // 2), hint, curses.color_pair(3) | curses.A_DIM)
+
+        # Action buttons sit directly below the search area.
+        menu_top = top + 5
+        menu_width = min(66, width - 10)
+        menu_left = center - menu_width // 2
+        for index, (label, description, _) in enumerate(actions):
+            y = menu_top + index * 3
+            active = not search_focused and index == selected
+            attr = (curses.color_pair(4) | curses.A_BOLD) if active else curses.color_pair(3)
+            button = f"  {label}  "
+            button_x = center - len(button) // 2
+            stdscr.addstr(y, button_x, button, attr)
+            desc_x = center - len(description) // 2
+            stdscr.addstr(y + 1, max(1, desc_x), description[:width - 2], curses.color_pair(3) | curses.A_DIM)
+
+        footer = "↑ / ↓ Navigate    ENTER Select    Type to search    ESC Clear / Back"
+        stdscr.addstr(height - 2, max(1, center - len(footer) // 2), footer[:width - 2],
+                      curses.color_pair(2) | curses.A_DIM)
+        stdscr.refresh()
+
+        key = stdscr.getch()
+        if search_focused:
+            if key in (curses.KEY_DOWN, curses.KEY_TAB):
+                search_focused = False
+                selected = 0
+            elif key in (curses.KEY_UP,):
+                pass
+            elif key in (curses.KEY_ENTER, 10, 13):
+                if query.strip():
+                    return "search", query.strip()
+                search_focused = False
+                selected = 0
+            elif key in (27,):
+                if query:
+                    query = ""
+                else:
+                    return "exit", ""
+            elif key in (curses.KEY_BACKSPACE, 127, 8):
+                query = query[:-1]
+            elif 32 <= key <= 126 and len(query) < 120:
+                query += chr(key)
+        else:
+            if key in (curses.KEY_UP,):
+                if selected == 0:
+                    search_focused = True
+                else:
+                    selected -= 1
+            elif key == curses.KEY_DOWN:
+                selected = min(len(actions) - 1, selected + 1)
+            elif key in (curses.KEY_ENTER, 10, 13):
+                return actions[selected][2], ""
+            elif key in (27,):
+                search_focused = True
+            elif key in (ord("/"),):
+                search_focused = True
+            elif key in (ord("q"),):
+                return "exit", ""
+
+
 def main():
     global COMMIT_SHA
 
@@ -442,39 +566,29 @@ def main():
         console.print("[cyan]Connecting to HostScripts repository...[/cyan]")
         branch_data = request_json(f"{API_BASE}/branches/{BRANCH}")
         COMMIT_SHA = branch_data["commit"]["sha"]
-        tree_data = request_json(
-            f"{API_BASE}/git/trees/{COMMIT_SHA}?recursive=1"
-        )
+        tree_data = request_json(f"{API_BASE}/git/trees/{COMMIT_SHA}?recursive=1")
         if tree_data.get("truncated"):
             raise RuntimeError("GitHub returned a truncated repository tree.")
-
         categories = build_tree(tree_data.get("tree", []))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, KeyError, ValueError, RuntimeError) as error:
         console.print(f"\n[bold red]Could not load HostScripts: {error}[/bold red]")
         raise SystemExit(1)
 
     total_scripts = sum(script_count(category) for category in categories)
-    console.clear()
 
     while True:
-        show_header()
-        console.print(
-            f"[dim]{len(categories)} main categories  •  {total_scripts} scripts discovered[/dim]\n"
-        )
-        console.print("[bold bright_cyan]HOME[/bold bright_cyan]")
-        console.print("  [yellow]1.[/yellow] ⭐ Top Picks")
-        console.print("  [yellow]2.[/yellow] 📂 Browse all categories")
-        console.print("  [yellow]3.[/yellow] 🔎 Search scripts")
-        console.print("  [yellow]4.[/yellow] 🔄 Refresh repository")
-        console.print("  [dim]0. Exit[/dim]")
+        try:
+            action, value = curses.wrapper(draw_home, categories, total_scripts)
+        except curses.error:
+            console.print("[red]Could not start the interactive interface. Run this program in a normal terminal.[/red]")
+            return
 
-        choice = Prompt.ask("Select", default="1").strip()
-        if choice == "0":
+        if action == "exit":
             console.print("[cyan]Thanks for using HostScripts.[/cyan]")
             return
-        if choice == "1":
+        if action == "top":
             show_top_picks(categories)
-        elif choice == "2":
+        elif action == "browse":
             selected = choose_from_list(
                 "ALL CATEGORIES",
                 categories,
@@ -482,13 +596,31 @@ def main():
             )
             if selected:
                 show_category(selected)
-        elif choice == "3":
-            search_scripts(categories)
-        elif choice == "4":
-            main()
-            return
-        else:
-            console.print("[red]Invalid selection.[/red]")
+        elif action == "search":
+            all_scripts = flatten_scripts(categories)
+            query = value.lower()
+            matches = [
+                script for script in all_scripts
+                if query in script.name.lower()
+                or query in script.path.lower()
+                or query in script.description.lower()
+            ]
+            console.clear()
+            show_header()
+            if not matches:
+                console.print(f"[yellow]No scripts found for “{value}”.[/yellow]")
+                Prompt.ask("Press Enter to return", default="")
+                continue
+            selected = choose_from_list(
+                f"SEARCH RESULTS ({len(matches)})",
+                matches,
+                lambda item: f"[green]{item.symbol}  {item.name}[/green]  [dim]{item.path}[/dim]",
+            )
+            if selected:
+                show_script(selected)
+        elif action == "refresh":
+            console.print("[cyan]Refreshing repository...[/cyan]")
+            return main()
 
 
 if __name__ == "__main__":
