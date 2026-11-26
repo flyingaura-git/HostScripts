@@ -72,11 +72,19 @@ class Category:
 
     @property
     def description(self) -> str:
-        return self.metadata.get("description", "No description provided.")
+        if self.metadata.get("description"):
+            return self.metadata["description"]
+        body = self.metadata.get("_body", "")
+        paragraphs = [line.strip() for line in body.splitlines() if line.strip() and not line.strip().startswith("#")]
+        return paragraphs[0] if paragraphs else "No description provided."
 
     @property
     def symbol(self) -> str:
         return self.metadata.get("symbol", "📁")
+
+    @property
+    def logo(self) -> str:
+        return self.metadata.get("logo", "")
 
     @property
     def featured(self) -> bool:
@@ -161,7 +169,16 @@ def build_tree(entries: list[dict]) -> list[Category]:
 
     # Load category metadata.
     for relative, category in directories.items():
-        category.metadata, _ = fetch_optional_markdown(f"{category.path}/category.md")
+        category.metadata, body = fetch_optional_markdown(f"{category.path}/category.md")
+        category.metadata["_body"] = body
+        if not category.metadata.get("name") and body:
+            heading = re.search(r"^#\\s+(.+)$", body, re.MULTILINE)
+            if heading:
+                category.metadata["name"] = heading.group(1).strip()
+        if not category.metadata.get("description") and body:
+            paragraphs = [line.strip() for line in body.splitlines() if line.strip() and not line.strip().startswith("#")]
+            if paragraphs:
+                category.metadata["description"] = paragraphs[0]
 
     # Attach each directory to its parent, or to the root.
     roots: list[Category] = []
