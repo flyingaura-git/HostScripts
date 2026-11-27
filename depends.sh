@@ -102,9 +102,55 @@ unavailable_packages=()
 missing_packages=()
 
 for package in "${PACKAGES[@]}"; do
-    if apt-cache show "$package" 2>/dev/null | grep -q '^Package:'; then
+    if apt-cache show "$package" 2>/dev/null | grep '^Package:' >/dev/null; then
         available_packages+=("$package")
-        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
+        if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep '^install ok installed; then
+            missing_packages+=("$package")
+        fi
+    else
+        unavailable_packages+=("$package")
+    fi
+done
+
+log "Dependencies defined: ${#PACKAGES[@]}"
+log "Available in configured APT repositories: ${#available_packages[@]}"
+log "Dependencies missing: ${#missing_packages[@]}"
+
+if (("${#unavailable_packages[@]}" > 0)); then
+    warn "Not available in the configured APT repositories:"
+    printf '  - %s\n' "${unavailable_packages[@]}" >&2
+fi
+
+if (("${#missing_packages[@]}" == 0)); then
+    log "All available HostScripts dependencies are already installed."
+    exit 0
+fi
+
+printf '  - %s\n' "${missing_packages[@]}"
+
+if [[ "$CHECK_ONLY" == true ]]; then
+    warn "Dependency check failed. Run 'sudo bash ${SCRIPT_NAME}' to install missing packages."
+    exit 1
+fi
+
+log "Installing missing dependencies..."
+apt-get install -y --no-install-recommends "${missing_packages[@]}"
+
+log "Verifying installation..."
+failed=()
+for package in "${missing_packages[@]}"; do
+    if ! dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q '^install ok installed$'; then
+        failed+=("$package")
+    fi
+done
+
+if (("${#failed[@]}" > 0)); then
+    printf '  - %s\n' "${failed[@]}" >&2
+    die "Some dependencies could not be verified."
+fi
+
+log "All available HostScripts dependencies are installed successfully."
+ >/dev/null; then
             missing_packages+=("$package")
         fi
     else
