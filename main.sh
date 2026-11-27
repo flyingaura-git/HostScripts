@@ -1,67 +1,34 @@
 #!/usr/bin/env bash
 #
-# HostScripts - Remote one-line launcher
+# HostScripts - Remote launcher
 #
 # Usage:
 #   curl -fsSL https://raw.githubusercontent.com/flyingaura-git/HostScripts/main/main.sh | bash
 #
 set -Eeuo pipefail
 
-readonly BASE_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/b3dea538e8b9b52542d29cd992720ce652bf89e"
-TEMP_DIR="$(mktemp -d)"
-trap 'rm -rf "$TEMP_DIR"' EXIT
+readonly DEPENDENCIES_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/main/dependencies.sh"
+readonly MAIN_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/main/main.py"
 
 log()  { printf '\033[1;34m[HostScripts]\033[0m %s\n' "$*"; }
 die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 
-if command -v curl >/dev/null 2>&1; then
-    download() { curl -fsSL --retry 3 --connect-timeout 10 "$BASE_URL/$1" -o "$2"; }
-    fetch_source() { curl -fsSL --retry 3 --connect-timeout 10 "$BASE_URL/$1"; }
-elif command -v wget >/dev/null 2>&1; then
-    download() { wget -q --tries=3 --timeout=10 "$BASE_URL/$1" -O "$2"; }
-    fetch_source() { wget -q --tries=3 --timeout=10 "$BASE_URL/$1" -O -; }
+command -v curl >/dev/null 2>&1 || die "curl is required to fetch HostScripts. Install curl and retry."
+
+log "Running the dependency installer..."
+if [[ "$EUID" -eq 0 ]]; then
+    curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 "$DEPENDENCIES_URL" | bash
 else
-    die "Neither curl nor wget is installed. Install one and retry."
+    command -v sudo >/dev/null 2>&1 || die "sudo is required. Run this launcher as root or install sudo."
+    curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 "$DEPENDENCIES_URL" | sudo bash
 fi
 
-log "Fetching HostScripts dependency installer..."
-download "dependencies.sh" "$TEMP_DIR/dependencies.sh" || die "Could not download dependencies.sh."
-[[ -s "$TEMP_DIR/dependencies.sh" ]] || die "The dependency installer is empty."
+log "Launching HostScripts..."
+command -v python3 >/dev/null 2>&1 || die "Python 3 is not installed."
 
-command -v python3 >/dev/null 2>&1 || die "Python 3 is not installed. Install Python 3, then run this launcher again."
+MAIN_SOURCE="$(curl --fail --silent --show-error --location --retry 3 --connect-timeout 10 "$MAIN_URL")" \
+    || die "Could not fetch main.py from GitHub."
+[[ -n "$MAIN_SOURCE" ]] || die "The downloaded main.py is empty."
 
-run_as_root() {
-    if [[ "$EUID" -eq 0 ]]; then
-        bash "$TEMP_DIR/dependencies.sh" "$@"
-    else
-        command -v sudo >/dev/null 2>&1 || die "sudo is required to install dependencies. Run as root or install sudo."
-        sudo bash "$TEMP_DIR/dependencies.sh" "$@"
-    fi
-}
-
-log "Checking HostScripts dependencies..."
-if run_as_root --check; then
-    log "Dependencies are already installed."
-else
-    log "Installing missing dependencies..."
-    run_as_root
-    log "Verifying dependencies..."
-    run_as_root --check || die "Dependency verification failed. Check the errors above."
-fi
-
-log "Checking Python Rich module..."
-PYTHON_BIN="$(command -v python3)"
-if ! "$PYTHON_BIN" -c 'import rich' >/dev/null 2>&1; then
-    if [[ -x /usr/bin/python3 ]] && /usr/bin/python3 -c 'import rich' >/dev/null 2>&1; then
-        PYTHON_BIN="/usr/bin/python3"
-    else
-        die "Python Rich is still unavailable after dependency installation. Check that python3-rich installed successfully."
-    fi
-fi
-
-log "Fetching and launching main.py..."
-MAIN_SOURCE="$(fetch_source "main.py")" || die "Could not download main.py."
-[[ -n "$MAIN_SOURCE" ]] || die "Downloaded main.py is empty."
-
-# Execute source with -c so stdin remains attached to the terminal.
-exec "$PYTHON_BIN" -c "$MAIN_SOURCE" "$@"
+# Use -c rather than stdin so the CLI retains access to the terminal.
+exec python3 -c "$MAIN_SOURCE" "$@"
