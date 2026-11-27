@@ -7,7 +7,7 @@
 #
 set -Eeuo pipefail
 
-readonly BASE_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/main"
+readonly BASE_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/adee5ce2d84c7bd9fcdb02691be94b00a1c17e6d"
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
