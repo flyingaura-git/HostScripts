@@ -208,11 +208,15 @@ def build_tree(entries: list[dict]) -> list[Category]:
             suffix = PurePosixPath(filename).suffix.lower()
             if suffix not in SUPPORTED_SCRIPTS or filename.startswith("_"):
                 continue
+            metadata = fetch_script_metadata(entry["path"], available_paths)
             category.scripts.append(
                 Script(
-                    name=PurePosixPath(filename).stem.replace("-", " ").replace("_", " ").title(),
+                    name=metadata.get(
+                        "name",
+                        PurePosixPath(filename).stem.replace("-", " ").replace("_", " ").title(),
+                    ),
                     path=entry["path"],
-                    metadata=fetch_script_metadata(entry["path"], available_paths),
+                    metadata=metadata,
                 )
             )
 
