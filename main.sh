@@ -24,9 +24,10 @@ else
     die "Neither curl nor wget is installed. Install one and retry."
 fi
 
-log "Fetching dependency installer..."
+log "Fetching HostScripts dependency files..."
 download "depends.sh" "$TEMP_DIR/depends.sh" || die "Could not download depends.sh."
-[[ -s "$TEMP_DIR/depends.sh" ]] || die "Downloaded depends.sh is empty."
+download "dependencies.txt" "$TEMP_DIR/dependencies.txt" || die "Could not download dependencies.txt."
+[[ -s "$TEMP_DIR/depends.sh" && -s "$TEMP_DIR/dependencies.txt" ]] || die "A dependency file is empty."
 
 command -v python3 >/dev/null 2>&1 || die "Python 3 is not installed. Install Python 3, then run this launcher again."
 
