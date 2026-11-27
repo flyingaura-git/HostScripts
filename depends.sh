@@ -9,9 +9,9 @@ readonly SCRIPT_NAME="depends.sh"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 readonly MANIFEST="${SCRIPT_DIR}/dependencies.txt"
 
-log()  { printf '\033[1;34m[HostScripts]\033[0m %s\\n' "$*"; }
-warn() { printf '\033[1;33m[WARNING]\033[0m %s\\n' "$*" >&2; }
-die()  { printf '\033[1;31m[ERROR]\033[0m %s\\n' "$*" >&2; exit 1; }
+log()  { printf '\033[1;34m[HostScripts]\033[0m %s\n' "$*"; }
+warn() { printf '\033[1;33m[WARNING]\033[0m %s\n' "$*" >&2; }
+die()  { printf '\033[1;31m[ERROR]\033[0m %s\n' "$*" >&2; exit 1; }
 
 usage() {
     cat <<EOF
@@ -72,7 +72,7 @@ done
 
 log "Dependencies missing: ${#missing_packages[@]}"
 if (("${#missing_packages[@]}" > 0)); then
-    printf '  - %s\\n' "${missing_packages[@]}"
+    printf '  - %s\n' "${missing_packages[@]}"
 fi
 
 if [[ "$CHECK_ONLY" == true ]]; then
@@ -106,7 +106,7 @@ for package in "${missing_packages[@]}"; do
 done
 
 if (("${#failed[@]}" > 0)); then
-    printf '  - %s\\n' "${failed[@]}" >&2
+    printf '  - %s\n' "${failed[@]}" >&2
     die "Some dependencies could not be verified."
 fi
 
