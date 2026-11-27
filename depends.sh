@@ -74,8 +74,17 @@ available_packages=()
 unavailable_packages=()
 missing_packages=()
 
+# Avoid piping apt-cache into an early-exiting reader under pipefail.
+# Capture each policy result first, then parse the complete file.
+POLICY_FILE="$(mktemp)"
+trap 'rm -f "$POLICY_FILE"' EXIT
+
 for package in "${PACKAGES[@]}"; do
-    candidate="$(apt-cache policy "$package" 2>/dev/null | awk '/Candidate:/ {print $2; exit}')"
+    if ! apt-cache policy "$package" >"$POLICY_FILE" 2>/dev/null; then
+        candidate=""
+    else
+        candidate="$(awk '/Candidate:/ { value=$2 } END { print value }' "$POLICY_FILE")"
+    fi
     if [[ -n "$candidate" && "$candidate" != "(none)" ]]; then
         available_packages+=("$package")
         status="$(dpkg-query -W -f='${Status}' "$package" 2>/dev/null || true)"
