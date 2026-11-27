@@ -1,39 +1,9 @@
-# HostScripts APT dependency manifest
+# HostScripts runtime APT dependencies
 # Format: package-name|purpose
-# Keep this file as the single source of truth for dependency checks and installs.
+# Only packages required by the launcher, CLI, and current scripts belong here.
 
 bash|Shell interpreter
-ca-certificates|Trusted TLS certificates
-coreutils|Core command-line utilities
-curl|HTTP downloads and API access
-dialog|Terminal dialog interface
-dnsutils|DNS diagnostic utilities
-figlet|Terminal text banners
-findutils|File and directory search utilities
-fzf|Interactive fuzzy finder
-gawk|GNU awk
-git|Git version control
-grep|Text search
-gum|Terminal UI components
-gzip|Gzip compression
-iproute2|Network interface and routing tools
-iputils-ping|ICMP ping utility
-jq|JSON processor
-less|Terminal pager
-lolcat|Colored terminal output
-lsof|Open file and socket inspection
-net-tools|Legacy network utilities
-openssl|TLS and cryptographic utilities
-procps|Process and system utilities
-psmisc|Process inspection utilities
-pv|Pipe progress viewer
-python3|Python runtime
-python3-rich|Rich terminal UI library for Python
-rsync|File synchronization
-sed|Stream editor
-tar|Archive utilities
-unzip|ZIP extraction
-util-linux|System utilities
-wget|HTTP downloads
-whiptail|Terminal dialog interface
-xz-utils|XZ compression
+ca-certificates|Trusted TLS certificates for HTTPS downloads
+curl|Download launcher files and script sources
+python3|Run the HostScripts CLI
+python3-rich|Terminal interface library used by the CLI
