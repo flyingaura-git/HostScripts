@@ -7,7 +7,7 @@
 #
 set -Eeuo pipefail
 
-readonly BASE_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/a491ad866d9391e67ee8ea36c46f484de4e60f9e"
+readonly BASE_URL="https://raw.githubusercontent.com/flyingaura-git/HostScripts/b3dea538e8b9b52542d29cd992720ce652bf89e"
 TEMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TEMP_DIR"' EXIT
 
@@ -24,19 +24,18 @@ else
     die "Neither curl nor wget is installed. Install one and retry."
 fi
 
-log "Fetching HostScripts dependency files..."
-download "depends.sh" "$TEMP_DIR/depends.sh" || die "Could not download depends.sh."
-download "dependencies.txt" "$TEMP_DIR/dependencies.txt" || die "Could not download dependencies.txt."
-[[ -s "$TEMP_DIR/depends.sh" && -s "$TEMP_DIR/dependencies.txt" ]] || die "A dependency file is empty."
+log "Fetching HostScripts dependency installer..."
+download "dependencies.sh" "$TEMP_DIR/dependencies.sh" || die "Could not download dependencies.sh."
+[[ -s "$TEMP_DIR/dependencies.sh" ]] || die "The dependency installer is empty."
 
 command -v python3 >/dev/null 2>&1 || die "Python 3 is not installed. Install Python 3, then run this launcher again."
 
 run_as_root() {
     if [[ "$EUID" -eq 0 ]]; then
-        bash "$TEMP_DIR/depends.sh" "$@"
+        bash "$TEMP_DIR/dependencies.sh" "$@"
     else
         command -v sudo >/dev/null 2>&1 || die "sudo is required to install dependencies. Run as root or install sudo."
-        sudo bash "$TEMP_DIR/depends.sh" "$@"
+        sudo bash "$TEMP_DIR/dependencies.sh" "$@"
     fi
 }
 
