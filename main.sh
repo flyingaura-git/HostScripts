@@ -49,10 +49,19 @@ else
     run_as_root --check || die "Dependency verification failed. Check the errors above."
 fi
 
+log "Checking Python Rich module..."
+PYTHON_BIN="$(command -v python3)"
+if ! "$PYTHON_BIN" -c 'import rich' >/dev/null 2>&1; then
+    if [[ -x /usr/bin/python3 ]] && /usr/bin/python3 -c 'import rich' >/dev/null 2>&1; then
+        PYTHON_BIN="/usr/bin/python3"
+    else
+        die "Python Rich is still unavailable after dependency installation. Check that python3-rich installed successfully."
+    fi
+fi
+
 log "Fetching and launching main.py..."
 MAIN_SOURCE="$(fetch_source "main.py")" || die "Could not download main.py."
 [[ -n "$MAIN_SOURCE" ]] || die "Downloaded main.py is empty."
 
-# Use -c rather than piping source to Python: this keeps stdin attached to
-# the user's terminal, which is required by the interactive curses interface.
-exec python3 -c "$MAIN_SOURCE" "$@"
+# Execute source with -c so stdin remains attached to the terminal.
+exec "$PYTHON_BIN" -c "$MAIN_SOURCE" "$@"
